@@ -8,10 +8,9 @@ require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(); # Not exporting anything - this is OO.
 
-$VERSION = '0.01';
+$VERSION = '0.03';
 
 use DBI;
-use MIME::Base64;
 
 sub new {
 	my $this = shift;
@@ -29,6 +28,7 @@ sub Initialise {
 	my $userid = shift;
 	my $password = shift;
 	my $dbname = shift;
+	$self->{verbose} = shift;
 
 	$self->{dbh} = DBI->connect("dbi:$driver:". $self->{datasource}, $userid, $password);
 	if (!$self->{dbh}) {
@@ -75,16 +75,15 @@ sub _CreateOutput {
 	my $row = 0;
 	my @data;
 	while (@data = $self->{sth}->fetchrow_array) {
+		print STDERR "Row: ", $row++, "\n" if $self->{verbose};
 		my $i = 0;
 		$self->{output} .= "\t\t<ROW>\n";
 		foreach my $f (@data) {
 			if (defined $f) {
-				my $encoding;
 				if ($f !~ /^[\t\n\r\x20-\x7e]*$/) {
-					# If this contains characters outside the UTF-8 range,
-					# then encode it in base64
-					$f = MIME::Base64::encode($f);
-					$encoding = ' xml:packed="base64"';
+					# If this contains characters outside the ASCII range,
+					# then encode as UTF-8
+					$f =~ s/([\x7f-\xFF])/XmlUtf8Encode(ord($1))/ge;
 				}
 				else {
 					$f =~ s/&/&amp;/g;
@@ -93,7 +92,7 @@ sub _CreateOutput {
 					$f =~ s/'/&apos;/g;
 					$f =~ s/"/&quot;/g;
 				}
-				$self->{output} .= "\t\t\t<" . $fields->[$i] . $encoding . '>' .$f . '</' . $fields->[$i] . ">\n";
+				$self->{output} .= "\t\t\t<" . $fields->[$i] . '>' .$f . '</' . $fields->[$i] . ">\n";
 			}
 			$i++;
 		}
@@ -113,17 +112,51 @@ sub GetData {
 	return $output;
 }
 
+#
+# Converts an integer (Unicode - ISO/IEC 10646) to a UTF-8 encoded character 
+# sequence.
+#
+# Algorithm borrowed from expat/xmltok.c/XmlUtf8Encode()
+#
+sub XmlUtf8Encode
+{
+    my $n = shift;
+
+# not checking for bad characters: < 0, x00-x08, x0B-x0C, x0E-x1F, xFFFE-xFFFF
+
+    if ($n < 0x80)
+    {
+		return chr ($n);
+    }
+    elsif ($n < 0x800)
+    {
+		return pack ("CC", (($n >> 6) | 0xc0), (($n & 0x3f) | 0x80));
+    }
+    elsif ($n < 0x10000)
+    {
+		return pack ("CCC", (($n >> 12) | 0xe0), ((($n >> 6) & 0x3f) | 0x80),
+		     (($n & 0x3f) | 0x80));
+    }
+    elsif ($n < 0x110000)
+    {
+		return pack ("CCCC", (($n >> 18) | 0xf0), ((($n >> 12) & 0x3f) | 0x80),
+		     ((($n >> 6) & 0x3f) | 0x80), (($n & 0x3f) | 0x80));
+    }
+
+    die "number is too large for Unicode [$n] in &XmlUtf8Encode";
+}
+
 1;
 __END__
 
 =head1 NAME
 
-DBI::XML - Perl extension for creating XML from existing DBI datasources
+DBIx::XML_RDB - Perl extension for creating XML from existing DBI datasources
 
 =head1 SYNOPSIS
 
-  use DBI::XML;
-  my $xmlout = DBI::XML->new($datasource,
+  use DBIx::XML_RDB;
+  my $xmlout = DBIx::XML_RDB->new($datasource,
   		"ODBC", $userid, $password, $dbname) || die "Failed to make new xmlout";
   $xmlout->DoSql("select * from MyTable");
   print $xmlout->GetData;
@@ -144,8 +177,8 @@ This tool simply dumps a table in a database to an XML file. This can be used in
 conjunction with xml2sql (part of the XML::DBI(?) package) to transfer databases
 from one platform or database server to another.
 
-Binary data is encoded using MIME::Base64. This module has a dependency on that package,
-as well as (obviously) on the DBI package.
+Binary data is encoded using UTF-8. This is automatically decoded when parsing
+with XML::Parser.
 
 Included with the distribution is a "Scriptlet" - this is basically a Win32 OLE
 wrapper around this class, allowing you to call this module from any application
@@ -203,9 +236,7 @@ The format of the XML output is something like this:
 		</RESULTSET>
 	</DataSource>
 
-This is quite easy to parse using XML::Parser. Note that any data outside of normal
-characters and numbers is converted to MIME::Base64 encoded data. You are responsible
-for decoding it at the other end (see the MIME::Base64 module to do this).
+This is quite easy to parse using XML::Parser.
 
 =head1 AUTHOR
 

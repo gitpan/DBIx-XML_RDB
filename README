@@ -1,10 +1,26 @@
+0.03  Fri Jan 08 1999
+	- Fixed test.pl to "use DBIx::XML_RDB;" (thanks Randal!)
+	- Use UTF-8 encoding, rather than MIME::Base64
+
+0.02  Mon Jan 04 1999
+	- Added xml2sql.pl
+	- Updated to more Unixish install
+	- minor fixes
+
+0.01  Thu Oct 22 09:58:13 1998
+	- original version; created by h2xs 1.18
+	- actually not quite original. Converted from sql2xls and then
+		converted from Win32::ODBC to DBI
+
+----------------------------------------------------------------
+
 NAME
-    DBI::XML - Perl extension for creating XML from existing DBI
+    DBIx::XML_RDB - Perl extension for creating XML from existing DBI
     datasources
 
 SYNOPSIS
-      use DBI::XML;
-      my $xmlout = DBI::XML->new($datasource,
+      use DBIx::XML_RDB;
+      my $xmlout = DBIx::XML_RDB->new($datasource,
                     "ODBC", $userid, $password, $dbname) || die "Failed to make new xmlout";
       $xmlout->DoSql("select * from MyTable");
       print $xmlout->GetData;
@@ -28,9 +44,7 @@ DESCRIPTION
     xml2sql (part of the XML::DBI(?) package) to transfer databases
     from one platform or database server to another.
 
-    Binary data is encoded using MIME::Base64. This module has a
-    dependency on that package, as well as (obviously) on the DBI
-    package.
+    Binary data is encoded using UTF-8.
 
     Included with the distribution is a "Scriptlet" - this is
     basically a Win32 OLE wrapper around this class, allowing you to
@@ -93,16 +107,10 @@ FUNCTIONS
                     </RESULTSET>
             </DataSource>
 
-    This is quite easy to parse using XML::Parser. Note that any
-    data outside of normal characters and numbers is converted to
-    MIME::Base64 encoded data. You are responsible for decoding it
-    at the other end (see the MIME::Base64 module to do this).
+    This is quite easy to parse using XML::Parser.
 
 AUTHOR
     Matt Sergeant, msergeant@ndirect.co.uk (ISP) or
     sergeant@geocities.com (more permanent, but slower response
     times).
-
-SEE ALSO
-    perl(1). XML::DBI.
 

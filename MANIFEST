@@ -2,7 +2,8 @@ Changes
 MANIFEST
 Makefile.PL
 README
-Sql2xml.pl
+sql2xml.pl
+xml2sql.pl
 XML_RDB.pm
 XMLDB.sct
 test.pl
