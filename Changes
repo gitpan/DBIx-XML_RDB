@@ -1,5 +1,8 @@
 Revision history for Perl extension DBI::XML.
 
+0.05  Wed Dec 13 2000
+        - XML Encode better
+
 0.04  Fri Dec 01 2000
         - Updated to work with MySQL (Kip Hampton)
         - Driver now specified in an attribute (Kip Hampton)

@@ -1,14 +1,14 @@
 package DBIx::XML_RDB;
 
 use strict;
-use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
+use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %XMLCHARS $REXMLCHARS);
 
 require Exporter;
 
 @ISA = qw(Exporter);
 @EXPORT = qw(); # Not exporting anything - this is OO.
 
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 use DBI;
 
@@ -19,6 +19,19 @@ sub new {
 	bless $self, $class;
 	$self->Initialise(@_) || return undef;
 	return $self;
+}
+
+%XMLCHARS = (
+        '&' => '&amp;',
+        '<' => '&lt;',
+        '>' => '&gt;',
+        '"' => '&quot;',
+        );
+
+sub xmlenc {
+    my $str = shift;
+    $str =~ s/([&<>"])/$XMLCHARS{$1}/ge;
+    return $str;
 }
 
 sub Initialise {
@@ -44,7 +57,7 @@ sub Initialise {
 	}
 
 	$self->{output} = "<?xml version=\"1.0\"?>\n";
-	$self->{output} .= "<DBI driver=\"". $self->{datasource} . "\">\n";
+	$self->{output} .= "<DBI driver=\"". xmlenc($self->{datasource}) . "\">\n";
 
 	return 1;
 }
@@ -70,7 +83,7 @@ sub _CreateOutput {
 
 	# Now insert the actual data.
 
-	$self->{output} .= "\t<RESULTSET statement=\"". $self->{sth}->{Statement} ."\">\n";
+	$self->{output} .= "\t<RESULTSET statement=\"". xmlenc($self->{sth}->{Statement}) ."\">\n";
 
 	my $row = 0;
 	my @data;
@@ -80,19 +93,7 @@ sub _CreateOutput {
 		$self->{output} .= "\t\t<ROW>\n";
 		foreach my $f (@data) {
 			if (defined $f) {
-				if ($f !~ /^[\t\n\r\x20-\x7e]*$/) {
-					# If this contains characters outside the ASCII range,
-					# then encode as UTF-8
-					$f =~ s/([\x7f-\xFF])/XmlUtf8Encode(ord($1))/ge;
-				}
-				else {
-					$f =~ s/&/&amp;/g;
-					$f =~ s/</&lt;/g;
-					$f =~ s/>/&gt;/g;
-					$f =~ s/'/&apos;/g;
-					$f =~ s/"/&quot;/g;
-				}
-				$self->{output} .= "\t\t\t<" . $fields->[$i] . '>' .$f . '</' . $fields->[$i] . ">\n";
+				$self->{output} .= "\t\t\t<" . $fields->[$i] . '>' . xmlenc($f) . '</' . $fields->[$i] . ">\n";
 			}
 			$i++;
 		}
@@ -107,43 +108,9 @@ sub GetData {
 
 	# Return output to starting state, in case we want to do more...
 	$self->{output} = "<?xml version=\"1.0\"?>\n";
-	$self->{output} .= "<DBI driver=\"" . $self->{datasource} . "\">\n";
+	$self->{output} .= "<DBI driver=\"" . xmlenc($self->{datasource}) . "\">\n";
 
 	return $output;
-}
-
-#
-# Converts an integer (Unicode - ISO/IEC 10646) to a UTF-8 encoded character 
-# sequence.
-#
-# Algorithm borrowed from expat/xmltok.c/XmlUtf8Encode()
-#
-sub XmlUtf8Encode
-{
-    my $n = shift;
-
-# not checking for bad characters: < 0, x00-x08, x0B-x0C, x0E-x1F, xFFFE-xFFFF
-
-    if ($n < 0x80)
-    {
-		return chr ($n);
-    }
-    elsif ($n < 0x800)
-    {
-		return pack ("CC", (($n >> 6) | 0xc0), (($n & 0x3f) | 0x80));
-    }
-    elsif ($n < 0x10000)
-    {
-		return pack ("CCC", (($n >> 12) | 0xe0), ((($n >> 6) & 0x3f) | 0x80),
-		     (($n & 0x3f) | 0x80));
-    }
-    elsif ($n < 0x110000)
-    {
-		return pack ("CCCC", (($n >> 18) | 0xf0), ((($n >> 12) & 0x3f) | 0x80),
-		     ((($n >> 6) & 0x3f) | 0x80), (($n & 0x3f) | 0x80));
-    }
-
-    die "number is too large for Unicode [$n] in &XmlUtf8Encode";
 }
 
 1;
