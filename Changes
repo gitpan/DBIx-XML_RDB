@@ -1,5 +1,9 @@
 Revision history for Perl extension DBI::XML.
 
+0.04  Fri Dec 01 2000
+        - Updated to work with MySQL (Kip Hampton)
+        - Driver now specified in an attribute (Kip Hampton)
+
 0.03  Fri Jan 08 1999
 	- Fixed test.pl to "use DBIx::XML_RDB;" (thanks Randal!)
 	- Use UTF-8 encoding, rather than MIME::Base64

@@ -8,7 +8,7 @@ require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(); # Not exporting anything - this is OO.
 
-$VERSION = '0.03';
+$VERSION = '0.04';
 
 use DBI;
 
@@ -44,7 +44,7 @@ sub Initialise {
 	}
 
 	$self->{output} = "<?xml version=\"1.0\"?>\n";
-	$self->{output} .= "<". $self->{datasource} . ">\n";
+	$self->{output} .= "<DBI driver=\"". $self->{datasource} . "\">\n";
 
 	return 1;
 }
@@ -103,11 +103,11 @@ sub _CreateOutput {
 
 sub GetData {
 	my $self = shift;
-	my $output = $self->{output} . "</". $self->{datasource} . ">\n";
+	my $output = $self->{output} . "</DBI>\n";
 
 	# Return output to starting state, in case we want to do more...
 	$self->{output} = "<?xml version=\"1.0\"?>\n";
-	$self->{output} .= "<". $self->{datasource} . ">\n";
+	$self->{output} .= "<DBI driver=\"" . $self->{datasource} . "\">\n";
 
 	return $output;
 }
@@ -220,7 +220,7 @@ being passed to new()).
 The format of the XML output is something like this:
 
 	<?xml version="1.0"?>
-	<DataSource>
+	<DBI driver="dbi:Sybase:database=foo">
 		<RESULTSET statement="select * from Table">
 			<ROW>
 			<Col1Name>Data</Col1Name>
@@ -234,18 +234,16 @@ The format of the XML output is something like this:
 		<RESULTSET statement="select * from OtherTable">
 		...
 		</RESULTSET>
-	</DataSource>
+	</DBI>
 
 This is quite easy to parse using XML::Parser.
 
 =head1 AUTHOR
 
-Matt Sergeant, msergeant@ndirect.co.uk (ISP) or sergeant@geocities.com (more permanent,
-but slower response times).
+Matt Sergeant, matt@sergeant.org
 
 =head1 SEE ALSO
 
-perl(1).
-XML::DBI.
+XML::Parser
 
 =cut

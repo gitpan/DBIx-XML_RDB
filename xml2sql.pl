@@ -4,7 +4,7 @@ package XMLDBI;
 use DBI qw/:sql_types/;
 use XML::Parser;
 
-use vars qw(@ISA @EXPORT $table $dbh $sth);
+use vars qw(@ISA @EXPORT $table $dbh $sth @col_vals);
 
 @ISA= ("XML::Parser");
 
@@ -75,7 +75,7 @@ sub Init {
 	}
 
 	$sql .= " )";
-print $sql, "\n\n";
+#	print $sql, "\n\n";
 	$sth = $dbh->prepare($sql) || die;
 
 #	my $count = 1;
@@ -98,31 +98,31 @@ sub Start {
 sub End {
 	my ($expat, $element) = @_;
 	if ($element eq "ROW") {
+
 		# Found the end of a row
 		print "Inserting a row...\n";
-		$sth->execute() || die;
+                shift @col_vals;
 
+                #kip: handy for debugging.
+                #DBI->trace(5);
+		#print "colvals are @col_vals\n";
+
+		$sth->execute(@col_vals) || die;
+	        @col_vals = ();
+
+                # kip:
+		# the following is no longer needed but I'll leave it just in case I'm wrong.
 		# Re-bind to undef (makes sure things are NULL)
-		my $count = 1;
-		foreach my $f (keys(%{$expat->{ __PACKAGE__ . "columns"}})) {
-			$sth->bind_param( $count++ , undef );
-		}
+		#my $count = 1;
+		#foreach my $f (keys(%{$expat->{ __PACKAGE__ . "columns"}})) {
+		#	$sth->bind_param( $count++ , undef );
+		#}
 	}
 	elsif ($expat->within_element("ROW")) {
-		# A column
 		$element = uc($element);
 		return unless $expat->{ __PACKAGE__ . "columns"}->{$element};
-		if (IsNumber($expat->{ __PACKAGE__ . "currentData"})) {
-			if( $expat->{ __PACKAGE__ . "currentData"} =~ /\./ ) {
-				$sth->bind_param($expat->{ __PACKAGE__ . "columns"}->{$element}, $expat->{ __PACKAGE__ . "currentData"}, SQL_FLOAT);
-			}
-			else {
-				$sth->bind_param($expat->{ __PACKAGE__ . "columns"}->{$element}, $expat->{ __PACKAGE__ . "currentData"}, SQL_INTEGER);
-			}
-		}
-		else {
-			$sth->bind_param($expat->{ __PACKAGE__ . "columns"}->{$element}, $expat->{ __PACKAGE__ . "currentData"}, SQL_VARCHAR);
-		}
+                $col_vals[$expat->{ __PACKAGE__ . "columns"}->{$element}] = 
+                  $expat->{ __PACKAGE__. "currentData"};
 	}
 }
 
@@ -132,7 +132,8 @@ sub Char {
 	my @context = $expat->context;
 	my $column = pop @context;
 	my $curtable = pop @context;
-	if ($curtable eq "ROW") {
+
+	if (($curtable) && ($curtable eq "ROW")) {
 		$expat->{ __PACKAGE__ . "currentData"} .= $string;
 	}
 }
