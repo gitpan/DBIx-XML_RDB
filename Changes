@@ -1,0 +1,6 @@
+Revision history for Perl extension DBI::XML.
+
+0.01  Thu Oct 22 09:58:13 1998
+	- original version; created by h2xs 1.18
+	- actually not quite original. Converted from sql2xls and then
+		converted from Win32::ODBC to DBI

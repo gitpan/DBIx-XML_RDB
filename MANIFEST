@@ -1,0 +1,8 @@
+Changes
+MANIFEST
+Makefile.PL
+README
+Sql2xml.pl
+XML_RDB.pm
+XMLDB.sct
+test.pl
