@@ -7,3 +7,4 @@ xml2sql.pl
 XML_RDB.pm
 XMLDB.sct
 test.pl
+META.yml                                 Module meta-data (added by MakeMaker)

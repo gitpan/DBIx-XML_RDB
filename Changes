@@ -1,5 +1,8 @@
 Revision history for Perl extension DBI::XML.
 
+0.06  Tue Jul 3 2007
+		- ..._tagname and ..._nameattr support ( by Daniel Peder )
+
 0.05  Wed Dec 13 2000
         - XML Encode better
 

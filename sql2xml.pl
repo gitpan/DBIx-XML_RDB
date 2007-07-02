@@ -6,7 +6,7 @@ use strict;
 
 use DBIx::XML_RDB;
 use Getopt::Long;
-use vars qw($datasource $driver $userid $password $table $outputfile $help $dbname $verbose @fields);
+use vars qw($datasource $driver $userid $password $table $outputfile $help $dbname $verbose $naming_mode @fields);
 
 sub usage;
 
@@ -20,6 +20,7 @@ my %optctl = (
 	'help' => \$help,
 	'db' => \$dbname,
 	'driver' => \$driver,
+	'naming' => \$naming_mode,
 	'verbose' => \$verbose );
 
 # Option types
@@ -31,6 +32,7 @@ my @options = (
 			"output=s",
 			"db=s",
 			"driver=s",
+			"naming=s",
 			"help",
 			"verbose"
 			);
@@ -47,6 +49,18 @@ $driver = $driver || "ODBC"; # ODBC is the default. Change this if you wish.
 
 my $xmlout = DBIx::XML_RDB->new($datasource, $driver, $userid, $password, $dbname)
 	|| die "Failed to make new xmlout";
+	
+if( $naming_mode && $naming_mode eq 'tags' ) {
+	$xmlout->document_tagname('document');
+	$xmlout->resultset_tagname('table');
+	$xmlout->row_tagname('record');
+}
+
+if( $naming_mode && $naming_mode eq 'attrs' ) {
+	$xmlout->document_nameattr('data');
+	$xmlout->resultset_nameattr('table');
+	$xmlout->row_nameattr('record');
+}
 
 $xmlout->DoSql("SELECT * FROM $table ORDER BY 1");
 
@@ -73,6 +87,7 @@ Usage:
         -table   tablename     Table to extract
         -output  outputfile    File to place output in (excel file)
         [-db     dbname]       Sybase database name
+        [-nm     mode]         naming mode [ 'tags'  | 'attrs' ]
         [-v or --verbose]      Verbose output
 EOF
 	exit;

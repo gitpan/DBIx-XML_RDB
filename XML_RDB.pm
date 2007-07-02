@@ -8,7 +8,7 @@ require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(); # Not exporting anything - this is OO.
 
-$VERSION = '0.05';
+$VERSION = '0.06';
 
 use DBI;
 
@@ -30,7 +30,7 @@ sub new {
 
 sub xmlenc {
     my $str = shift;
-    $str =~ s/([&<>"])/$XMLCHARS{$1}/ge;
+    $str =~ s/([&<>"])/$XMLCHARS{$1}/ge; #"
     return $str;
 }
 
@@ -55,9 +55,17 @@ sub Initialise {
 			return 0;
 		}
 	}
+	
+  # too early
+	#ver 0.05# $self->{output} .= "<DBI driver=\"". xmlenc($self->{datasource}) . "\">\n";
 
-	$self->{output} = "<?xml version=\"1.0\"?>\n";
-	$self->{output} .= "<DBI driver=\"". xmlenc($self->{datasource}) . "\">\n";
+	# init default values
+	$self->document_tagname(''); 
+	$self->resultset_tagname('');
+	$self->row_tagname('');
+	$self->document_nameattr('');
+	$self->resultset_nameattr('');
+	$self->row_nameattr('');
 
 	return 1;
 }
@@ -70,9 +78,15 @@ sub DESTROY {
 sub DoSql {
 	my $self = shift;
 	my $sql = shift;
+
+  unless( $self->{output} ) {
+  	$self->{output} = "<?xml version=\"1.0\"?>\n";
+  	$self->{output} .= "<".$self->document_tagname().$self->document_nameattr()." driver=\"". xmlenc($self->{datasource}) . "\">\n";
+  }
+	
 	$self->{sth} = $self->{dbh}->prepare($sql) || die $self->{dbh}->errstr;
 	$self->{sth}->execute || die $self->{sth}->errstr;
-	$self->_CreateOutput;
+	$self->_CreateOutput();
 	$self->{sth}->finish;
 }
 
@@ -80,37 +94,132 @@ sub _CreateOutput {
 	my $self = shift;
 
 	my $fields = $self->{sth}->{NAME};
-
+	
 	# Now insert the actual data.
 
-	$self->{output} .= "\t<RESULTSET statement=\"". xmlenc($self->{sth}->{Statement}) ."\">\n";
+	#ver 0.05# $self->{output} .= "\t<RESULTSET statement=\"". xmlenc($self->{sth}->{Statement}) ."\">\n";
+	$self->{output} .= "\t<".$self->resultset_tagname().$self->resultset_nameattr()." statement=\"". xmlenc($self->{sth}->{Statement}) ."\">\n";
 
 	my $row = 0;
 	my @data;
 	while (@data = $self->{sth}->fetchrow_array) {
 		print STDERR "Row: ", $row++, "\n" if $self->{verbose};
 		my $i = 0;
-		$self->{output} .= "\t\t<ROW>\n";
+		#ver 0.05# $self->{output} .= "\t\t<ROW>\n";
+		$self->{output} .= "\t\t<".$self->row_tagname().$self->row_nameattr().">\n";
 		foreach my $f (@data) {
 			if (defined $f) {
 				$self->{output} .= "\t\t\t<" . $fields->[$i] . '>' . xmlenc($f) . '</' . $fields->[$i] . ">\n";
 			}
 			$i++;
 		}
-		$self->{output} .= "\t\t</ROW>\n";
+		#ver 0.05# $self->{output} .= "\t\t</ROW>\n";
+		$self->{output} .= "\t\t</".$self->row_tagname().">\n";
 	}
-	$self->{output} .= "\t</RESULTSET>\n";
+	$self->{output} .= "\t</".$self->resultset_tagname().">\n";
 }
 
 sub GetData {
 	my $self = shift;
-	my $output = $self->{output} . "</DBI>\n";
+	#ver 0.05# my $output = $self->{output} . "</DBI>\n";
+	my $output = $self->{output} . "</".$self->document_tagname().">\n";
 
 	# Return output to starting state, in case we want to do more...
 	$self->{output} = "<?xml version=\"1.0\"?>\n";
-	$self->{output} .= "<DBI driver=\"" . xmlenc($self->{datasource}) . "\">\n";
+	#ver 0.05# $self->{output} .= "<DBI driver=\"" . xmlenc($self->{datasource}) . "\">\n";
+	$self->{output} .= "<".$self->document_tagname().$self->document_nameattr()." driver=\"" . xmlenc($self->{datasource}) . "\">\n";
 
 	return $output;
+}
+
+sub document_tagname { 
+  my $attr = 'document_tagname';
+  my $self = shift;
+  my $name = shift;
+  my $val;
+  if
+  ( defined $name ) {
+    $val = length($name) ? $name : 'DBI';
+  }
+  return $self->_naming_param($attr,$val);
+}
+
+sub resultset_tagname { 
+  my $attr = 'resultset_tagname';
+  my $self = shift;
+  my $name = shift;
+  my $val;
+  if
+  ( defined $name ) {
+    $val = length($name) ? $name : 'RESULTSET';
+  }
+  return $self->_naming_param($attr,$val);
+}
+
+sub row_tagname { 
+  my $attr = 'row_tagname';
+  my $self = shift;
+  my $name = shift;
+  my $val;
+  if
+  ( defined $name ) {
+    $val = length($name) ? $name : 'ROW';
+  }
+  return $self->_naming_param($attr,$val);
+}
+
+sub document_nameattr { 
+  my $attr = 'document_nameattr';
+  my $self = shift;
+  my $name = shift;
+  my $val;
+  if
+  ( defined $name ) {
+    $val = length($name) ? (' name="'.xmlenc($name).'"') : '';
+  }
+  return $self->_naming_param($attr,$val);
+}
+
+sub resultset_nameattr { 
+  my $attr = 'resultset_nameattr';
+  my $self = shift;
+  my $name = shift;
+  my $val;
+  if
+  ( defined $name ) {
+    $val = length($name) ? (' name="'.xmlenc($name).'"') : '';
+  }
+  return $self->_naming_param($attr,$val);
+}
+
+sub row_nameattr { 
+  my $attr = 'row_nameattr';
+  my $self = shift;
+  my $name = shift;
+  my $val;
+  if
+  ( defined $name ) {
+    $val = length($name) ? (' name="'.xmlenc($name).'"') : '';
+  }
+  return $self->_naming_param($attr,$val);
+}
+
+sub _naming_param {
+  my $self = shift;
+  my $attr = shift;
+  my $val  = shift;
+  
+  if
+  ( defined $val ) {
+    $self->{$attr} = $val;
+    return $val
+  }
+  elsif
+  ( exists $self->{$attr} ) {
+    return  $self->{$attr}
+  }
+  
+  return undef;
 }
 
 1;
@@ -205,9 +314,56 @@ The format of the XML output is something like this:
 
 This is quite easy to parse using XML::Parser.
 
+=head2 document_tagname
+
+  document_tagname ( [ $tagname ] )
+  
+Get/Set tagname of the main xml document, defaults to 'DBI'.
+With $value=undef returns the tagname.
+With $value='' sets the default 'DBI'
+
+=head2 resultset_tagname
+
+  resultset_tagname ( [ $tagname ] )
+  
+Default value: 'RESULTSET'
+  
+See document_tagname
+  
+=head2 row_tagname
+
+  row_tagname ( [ $tagname ] )
+  
+Default value: 'ROW'
+
+See document_tagname
+  
+=head2 document_nameattr
+
+  document_nameattr ( [ $value ] )
+  
+Get/Set value of the 'name' attribute of main xml document. 
+With $value=undef returns the whole attribute definition, example: name="my_name".
+With $value='' sets the return value to default ''.
+
+=head2 resultset_nameattr
+
+  resultset_nameattr ( [ $nameattr ] )
+  
+See document_nameattr
+  
+=head2 row_nameattr
+
+  row_nameattr ( [ $nameattr ] )
+  
+See document_nameattr
+  
+
 =head1 AUTHOR
 
 Matt Sergeant, matt@sergeant.org
+
+Daniel Peder, Daniel.Peder@infoset.cz ( the tagname and nameattr )
 
 =head1 SEE ALSO
 
